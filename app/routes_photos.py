@@ -21,19 +21,21 @@ def allowed(filename: str) -> bool:
 def index():
     sort = request.args.get("sort", "date")
     direction = request.args.get("dir", "desc")
+    try:
+        q = Photo.query
+        if sort == "name":
+            order_col = Photo.name
+        else:
+            order_col = Photo.upload_dt
 
-    q = Photo.query
-    if sort == "name":
-        order_col = Photo.name
-    else:
-        order_col = Photo.upload_dt
+        if direction == "asc":
+            q = q.order_by(order_col.asc())
+        else:
+            q = q.order_by(order_col.desc())
 
-    if direction == "asc":
-        q = q.order_by(order_col.asc())
-    else:
-        q = q.order_by(order_col.desc())
-
-    photos = q.all()
+        photos = q.all()
+    except Exception:
+        photos=[]
     return render_template("index.html", photos=photos, sort=sort, direction=direction)
 
 @photos_bp.get("/health")
