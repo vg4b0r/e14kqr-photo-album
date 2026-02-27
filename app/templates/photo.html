@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>{{ photo.name }}</h2>
+
+<p>
+    Feltöltve: {{ photo.upload_dt.strftime("%Y-%m-%d %H:%M") }}
+</p>
+
+<img src="{{ image_url }}" class="img-fluid">
+
+<br><br>
+<a href="{{ url_for('photos.index') }}" class="btn btn-secondary">Vissza</a>
+
+{% endblock %}

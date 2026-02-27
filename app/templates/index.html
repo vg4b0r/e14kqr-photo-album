@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Fényképek</h2>
+
+{% if current_user.is_authenticated %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>Új kép feltöltése</h5>
+        <form method="post" action="{{ url_for('photos.upload') }}" enctype="multipart/form-data">
+            <div class="mb-2">
+                <input name="name" class="form-control" placeholder="Kép neve (max 40 karakter)" maxlength="40" required>
+            </div>
+            <div class="mb-2">
+                <input type="file" name="file" class="form-control" required>
+            </div>
+            <button class="btn btn-primary">Feltöltés</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="mb-3">
+    <strong>Rendezés:</strong>
+    <a href="?sort=name&dir=asc" class="btn btn-sm btn-outline-secondary">Név ↑</a>
+    <a href="?sort=name&dir=desc" class="btn btn-sm btn-outline-secondary">Név ↓</a>
+    <a href="?sort=date&dir=asc" class="btn btn-sm btn-outline-secondary">Dátum ↑</a>
+    <a href="?sort=date&dir=desc" class="btn btn-sm btn-outline-secondary">Dátum ↓</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Név</th>
+            <th>Feltöltés dátuma</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for photo in photos %}
+        <tr>
+            <td>
+                <a href="{{ url_for('photos.view_photo', photo_id=photo.id) }}">
+                    {{ photo.name }}
+                </a>
+            </td>
+            <td>{{ photo.upload_dt.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td>
+                {% if current_user.is_authenticated and photo.user_id == current_user.id %}
+                <form method="post" action="{{ url_for('photos.delete', photo_id=photo.id) }}">
+                    <button class="btn btn-sm btn-danger">Törlés</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
