@@ -1,11 +1,11 @@
 from app import create_app
 
-application = create_app()
+app = create_app()
 
 
-@application.get("/health")
+@app.get("/health")
 def health():
     return "ok", 200
 
 if __name__ == "__main__":
-    application.run()
+    app.run()
