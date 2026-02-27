@@ -36,6 +36,10 @@ def index():
     photos = q.all()
     return render_template("index.html", photos=photos, sort=sort, direction=direction)
 
+@photos_bp.get("/health")
+def health():
+    return "ok", 200
+
 @photos_bp.post("/upload")
 @login_required
 def upload():
