@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from . import db
 from .models import Photo
 from .s3 import upload_fileobj, delete_object, presigned_get_url
+import logging
 
 photos_bp = Blueprint("photos", __name__)
 
@@ -35,12 +36,9 @@ def index():
 
         photos = q.all()
     except Exception:
+        logging.exception("Index DB query failed")
         photos=[]
     return render_template("index.html", photos=photos, sort=sort, direction=direction)
-
-@photos_bp.get("/health")
-def health():
-    return "ok", 200
 
 @photos_bp.post("/upload")
 @login_required

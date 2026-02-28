@@ -29,10 +29,6 @@ def register():
     flash("Sikeres regisztráció, most jelentkezz be.")
     return redirect(url_for("auth.login"))
 
-@auth_bp.get("/health")
-def health():
-    return "ok", 200
-
 @auth_bp.get("/login")
 def login():
     return render_template("login.html")
