@@ -18,7 +18,6 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # Dialektus-függő engine opciók (ne küldj Postgres opciót SQLite-nak!)
     engine_opts = {}
 
     if database_url.startswith("postgresql"):
