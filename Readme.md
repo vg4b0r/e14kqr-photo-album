@@ -1,3 +1,4 @@
+Az alkalmazás elérése: http://e14kqr-photo-album-env.eba-ahcumyf2.eu-north-1.elasticbeanstalk.com/
 # app/__ init __.py
 Az alkalmazás inicializáló modulja. 
 
@@ -10,7 +11,7 @@ Itt történik:
 
 Globális objektumok:
 - db = SQLAlchemy() – Adatbázis kapcsolat kezelése
-- migrate = Migrate() – Flask-Migrate integráci
+- migrate = Migrate() – Flask-Migrate integráció
 - login_manager = LoginManager() – Flask-Login konfiguráció
     login_view = "auth.login" → ha nem bejelentkezett felhasználó védett oldalra megy, ide irányít
 
@@ -18,7 +19,7 @@ create_app() függvény, az alkalmazás factory függvénye, amely:
 1. Létrehozza a Flask app-ot
 2. Beállítja a globális/környezeti változókat
 3. Dialektusfüggő SQLAlchemy engine opciókat ad meg
-4. Inicializála:
+4. Inicializálja:
     - db
     - migrate
     - login_manager
@@ -87,17 +88,17 @@ Az AWS S3 műveletek absztrakciója.
     - Időkorlát: 3600 mp
 
 # app.py
-Ez egy futtatható Flask belépési pont, ami a csomagban lévő create_app() factory-val létrehozza az appot, és ad néhány üzemeltetési (observability) extrát. Csak a lokális futtatás során volt használva.
+Ez egy futtatható Flask belépési pont, ami a csomagban lévő create_app() factory-val létrehozza az appot, és ad néhány üzemeltetési extrát. Csak a lokális futtatás során volt használva.
 
 # wsgi.py
-Ez a WSGI entrypoint production futtatáshoz (Gunicorn/Elastic Beanstalk tipikus mintája).
+Ez a WSGI entrypoint production futtatáshoz.
 - from app import create_app
 - app = create_app()
 - Tartalmaz egy GET /health endpointot is.
 A Gunicorn ezt a fájlt importálja, és innen kapja meg az app objektumot, amit kiszolgál.
 
 # Procfile
-Egy process definíciós fájl (Heroku-s hagyomány, de Elastic Beanstalknál is szokás), ami megmondja, hogyan induljon a web szerver.
+Egy process definíciós fájl, ami megmondja, hogyan induljon a web szerver.
 
 Tartalma és jelentése:
 - wsgi:app → a wsgi.py modulban lévő app változót szolgálja ki
@@ -112,7 +113,7 @@ GitHub Actions workflow, ami automatikus deployt csinál AWS Elastic Beanstalkra
 
 Lépések:
 - Repo checkout 
-- Python setup (nálad: python-version: "3.14" – erre figyelj, mert ez nem tipikus/általános EB runtime verzió) 
+- Python setup
 - pip install -r requirements.txt 
 - deploy.zip készítése, kihagyva pl. .git, .github, .venv, __pycache__, .env, local.db 
 - AWS credential beállítás GitHub secret-ekből 
@@ -134,7 +135,7 @@ Lépések:
 - cd /var/app/current → EB alatt tipikus az app könyvtár
 - source /var/app/venv/*/bin/activate → aktiválja a virtualenvet
 - export FLASK_APP=app
-- flask db upgrade → lefuttatja az Alembic migrációkat (legfrissebb verzióra)
+- flask db upgrade → lefuttatja az Alembic migrációkat
 
 # .platform/nginx/conf.d/proxy_timeout.conf
 Nginx/EB proxy konfigurációs részlet, ami a reverse proxy timeoutokat növeli.
@@ -153,9 +154,9 @@ Ez Alembic/Flask-Migrate környezetfájl, ami megmondja a migrációs eszköznek
 - hogyan fusson online/offline migráció.
 
 Miket csinál:
-- Betölti az Alembic konfigurációt, loggingot állít (fileConfig)
+- Betölti az Alembic konfigurációt, loggingot állít
 - get_engine() / get_engine_url():
-    - kompatibilitást kezel Flask-SQLAlchemy verziók között (régi: get_engine(), újabb: db.engine)
+    - kompatibilitást kezel Flask-SQLAlchemy verziók között
     - beállítja az Alembic sqlalchemy.url értékét a Flask app DB URL-jéből
 - get_metadata():
     - visszaadja a target metadata-t autogenerate-hez
