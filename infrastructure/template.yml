@@ -397,7 +397,7 @@ Resources:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Private subnets for PostgreSQL
-      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group'
+      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v2'
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
