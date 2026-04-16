@@ -15,7 +15,7 @@ Parameters:
 
   ExistingOrNewBucketName:
     Type: String
-    Default: e14kqr-photo-album-bucket-v6
+    Default: e14kqr-photo-album-bucket-v7
 
   VpcCidr:
     Type: String
@@ -55,7 +55,7 @@ Parameters:
 
   DBName:
     Type: String
-    Default: photoalbumdb-v6
+    Default: photoalbumdb-v7
 
   DBUsername:
     Type: String
@@ -85,7 +85,7 @@ Parameters:
 
   DBEngineVersion:
     Type: String
-    Default: "16"
+    Default: "17.6"
 
   AppSecretKey:
     Type: String
@@ -335,7 +335,7 @@ Resources:
   EBServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v6'
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v7'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -385,7 +385,7 @@ Resources:
   EBInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v6'
+      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v7'
       Roles:
         - !Ref EBEC2Role
 
@@ -410,7 +410,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres-v6'
+      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres-v7'
       Engine: postgres
       EngineVersion: !Ref DBEngineVersion
       DBInstanceClass: !Ref DBInstanceClass
@@ -440,7 +440,7 @@ Resources:
   EBApplication:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
-      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v6'
+      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v7'
       Description: Photo Album Elastic Beanstalk application
 
   EBEnvironment:
@@ -452,7 +452,7 @@ Resources:
       - EBServiceRole
     Properties:
       ApplicationName: !Ref EBApplication
-      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v6'
+      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v7'
       PlatformArn: !Ref PythonPlatformArn
       Tier:
         Name: WebServer
