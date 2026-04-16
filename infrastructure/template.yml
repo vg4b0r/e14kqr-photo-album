@@ -397,7 +397,7 @@ Resources:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Private subnets for PostgreSQL
-      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v2'
+      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group'
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
@@ -428,7 +428,7 @@ Resources:
       Port: 5432
       VPCSecurityGroups:
         - !Ref RDSSecurityGroup
-      DBSubnetGroupName: !Ref DBSubnetGroup-v2
+      DBSubnetGroupName: !Ref DBSubnetGroup
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-${EnvironmentName}-postgres'
