@@ -347,7 +347,6 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
-        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
 
   EBEC2Role:
     Type: AWS::IAM::Role
