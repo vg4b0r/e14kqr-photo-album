@@ -34,7 +34,7 @@ jobs:
               DBPassword=${{ secrets.DB_PASSWORD }} \
               AppSecretKey=${{ secrets.FLASK_SECRET_KEY }}
               ApplicationHealthCheckPath=/health \
-              ExistingOrNewBucketName=e14kqr-photo-album-bucket-v12
+              ExistingOrNewBucketName=e14kqr-photo-album-bucket-v13
 
       - name: Package application
         run: |
@@ -57,8 +57,8 @@ jobs:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           region: ${{ secrets.AWS_REGION }}
-          application_name: photo-album-prod-app-v12
-          environment_name: photo-album-prod-env-v12
+          application_name: photo-album-prod-app-v13
+          environment_name: photo-album-prod-env-v13
           version_label: ${{ github.sha }}
           deployment_package: deploy.zip
           wait_for_deployment: true
