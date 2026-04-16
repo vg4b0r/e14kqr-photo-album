@@ -15,7 +15,7 @@ Parameters:
 
   ExistingOrNewBucketName:
     Type: String
-    Default: e14kqr-photo-album-bucket
+    Default: e14kqr-photo-album-bucket-v2
 
   VpcCidr:
     Type: String
@@ -55,7 +55,7 @@ Parameters:
 
   DBName:
     Type: String
-    Default: photoalbumdb
+    Default: photoalbumdb-v2
 
   DBUsername:
     Type: String
@@ -335,7 +335,7 @@ Resources:
   EBServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role'
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v2'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -441,7 +441,7 @@ Resources:
   EBApplication:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
-      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app'
+      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v2'
       Description: Photo Album Elastic Beanstalk application
 
   EBEnvironment:
@@ -453,7 +453,7 @@ Resources:
       - EBServiceRole
     Properties:
       ApplicationName: !Ref EBApplication
-      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env'
+      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v2'
       PlatformArn: !Ref PythonPlatformArn
       Tier:
         Name: WebServer
