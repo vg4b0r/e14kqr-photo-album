@@ -1,0 +1,695 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Photo Album application infrastructure on AWS:
+  VPC, public/private subnets, security groups, S3, IAM, RDS PostgreSQL,
+  Elastic Beanstalk Application + Environment.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: photo-album
+
+  EnvironmentName:
+    Type: String
+    Default: prod
+
+  ExistingOrNewBucketName:
+    Type: String
+    Default: e14kqr-photo-album-bucket
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.0.11.0/24
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.0.12.0/24
+
+  EBInstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+
+  MinInstances:
+    Type: Number
+    Default: 1
+
+  MaxInstances:
+    Type: Number
+    Default: 4
+
+  DBName:
+    Type: String
+    Default: photoalbumdb
+
+  DBUsername:
+    Type: String
+    Default: postgres
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]*$'
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 128
+
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+      - db.t4g.micro
+      - db.t4g.small
+
+  DBEngineVersion:
+    Type: String
+    Default: "16.3"
+
+  AppSecretKey:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+
+  PythonPlatformArn:
+    Type: String
+    Default: arn:aws:elasticbeanstalk:eu-north-1::platform/Python 3.11 running on 64bit Amazon Linux 2023/4.3.0
+    Description: >
+      Elastic Beanstalk platform ARN. Region/platform verzió szerint állítsd.
+      Ha kell, cseréld a saját régiódnak megfelelő Python platform ARN-re.
+
+  ApplicationHealthCheckPath:
+    Type: String
+    Default: /health
+
+  ArtifactBucketName:
+    Type: String
+    Default: ""
+    Description: >
+      Opcionális. Ha most még üres, az environment létrejöhet, és utána a GitHub Actions
+      külön feltölti a kódot Elastic Beanstalkba. Ha szeretnéd, később használhatod
+      ApplicationVersion erőforráshoz is.
+
+Conditions:
+  HasArtifactBucketName: !Not [!Equals [!Ref ArtifactBucketName, ""]]
+
+Resources:
+  #####################################
+  # Networking
+  #####################################
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-igw'
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet1Cidr
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-public-subnet-1'
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet2Cidr
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-public-subnet-2'
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-private-subnet-1'
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-private-subnet-2'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-public-rt'
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet1RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-private-rt-1'
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-private-rt-2'
+
+  PrivateSubnet1RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  #####################################
+  # Security Groups
+  #####################################
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB security group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: HTTP from internet
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - Description: All outbound
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-alb-sg'
+
+  EBInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Elastic Beanstalk EC2 instances SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: HTTP from ALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - Description: All outbound
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-sg'
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: PostgreSQL security group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: PostgreSQL from EB instances
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EBInstanceSecurityGroup
+      SecurityGroupEgress:
+        - Description: All outbound
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-rds-sg'
+
+  #####################################
+  # S3
+  #####################################
+
+  ImagesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref ExistingOrNewBucketName
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-images-bucket'
+
+  #####################################
+  # IAM for Elastic Beanstalk
+  #####################################
+
+  EBServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - elasticbeanstalk.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
+
+  EBEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-${EnvironmentName}-s3-images-access'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ListBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt ImagesBucket.Arn
+              - Sid: ObjectAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${ImagesBucket.Arn}/*'
+
+  EBInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile'
+      Roles:
+        - !Ref EBEC2Role
+
+  #####################################
+  # RDS PostgreSQL
+  #####################################
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for PostgreSQL
+      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group'
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group'
+
+  PhotoAlbumDB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres'
+      Engine: postgres
+      EngineVersion: !Ref DBEngineVersion
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: false
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      Port: 5432
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-postgres'
+
+  #####################################
+  # Elastic Beanstalk
+  #####################################
+
+  EBApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app'
+      Description: Photo Album Elastic Beanstalk application
+
+  EBEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    DependsOn:
+      - PhotoAlbumDB
+      - EBApplication
+      - EBInstanceProfile
+      - EBServiceRole
+    Properties:
+      ApplicationName: !Ref EBApplication
+      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env'
+      PlatformArn: !Ref PythonPlatformArn
+      Tier:
+        Name: WebServer
+        Type: Standard
+      OptionSettings:
+        # Environment type / LB
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: LoadBalanced
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
+        - Namespace: aws:elbv2:loadbalancer
+          OptionName: SecurityGroups
+          Value: !Ref ALBSecurityGroup
+        - Namespace: aws:elbv2:loadbalancer
+          OptionName: ManagedSecurityGroup
+          Value: !Ref ALBSecurityGroup
+
+        # VPC / subnets
+        - Namespace: aws:ec2:vpc
+          OptionName: VPCId
+          Value: !Ref VPC
+        - Namespace: aws:ec2:vpc
+          OptionName: AssociatePublicIpAddress
+          Value: 'true'
+        - Namespace: aws:ec2:vpc
+          OptionName: Subnets
+          Value: !Join [',', [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBSubnets
+          Value: !Join [',', [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBScheme
+          Value: public
+
+        # Launch configuration
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: !Ref EBInstanceType
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: SecurityGroups
+          Value: !Ref EBInstanceSecurityGroup
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !Ref EBInstanceProfile
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: DisableIMDSv1
+          Value: 'true'
+
+        # Auto scaling
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: !Ref MinInstances
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: !Ref MaxInstances
+        - Namespace: aws:autoscaling:asg
+          OptionName: Cooldown
+          Value: '360'
+
+        - Namespace: aws:autoscaling:trigger
+          OptionName: MeasureName
+          Value: CPUUtilization
+        - Namespace: aws:autoscaling:trigger
+          OptionName: Statistic
+          Value: Average
+        - Namespace: aws:autoscaling:trigger
+          OptionName: Unit
+          Value: Percent
+        - Namespace: aws:autoscaling:trigger
+          OptionName: Period
+          Value: '3'
+        - Namespace: aws:autoscaling:trigger
+          OptionName: BreachDuration
+          Value: '3'
+        - Namespace: aws:autoscaling:trigger
+          OptionName: UpperThreshold
+          Value: '40'
+        - Namespace: aws:autoscaling:trigger
+          OptionName: LowerThreshold
+          Value: '20'
+        - Namespace: aws:autoscaling:trigger
+          OptionName: UpperBreachScaleIncrement
+          Value: '1'
+        - Namespace: aws:autoscaling:trigger
+          OptionName: LowerBreachScaleIncrement
+          Value: '-1'
+
+        # Rolling deployments
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: DeploymentPolicy
+          Value: Rolling
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: BatchSizeType
+          Value: Percentage
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: BatchSize
+          Value: '25'
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: Timeout
+          Value: '600'
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: IgnoreHealthCheck
+          Value: 'true'
+
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: RollingUpdateEnabled
+          Value: 'true'
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: RollingUpdateType
+          Value: Time
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: MaxBatchSize
+          Value: '1'
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: PauseTime
+          Value: PT5M30S
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: MinInstancesInService
+          Value: '1'
+
+        # Health / monitoring / logs
+        - Namespace: aws:elasticbeanstalk:healthreporting:system
+          OptionName: SystemType
+          Value: basic
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs
+          OptionName: StreamLogs
+          Value: 'false'
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs
+          OptionName: DeleteOnTerminate
+          Value: 'false'
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs
+          OptionName: RetentionInDays
+          Value: '7'
+        - Namespace: aws:elasticbeanstalk:managedactions
+          OptionName: ManagedActionsEnabled
+          Value: 'false'
+
+        # ALB listener / app process
+        - Namespace: aws:elbv2:listener:default
+          OptionName: ListenerEnabled
+          Value: 'true'
+        - Namespace: aws:elbv2:listener:default
+          OptionName: Protocol
+          Value: HTTP
+        - Namespace: aws:elbv2:listener:default
+          OptionName: Port
+          Value: '80'
+
+        - Namespace: aws:elasticbeanstalk:environment:process:default
+          OptionName: Port
+          Value: '80'
+        - Namespace: aws:elasticbeanstalk:environment:process:default
+          OptionName: Protocol
+          Value: HTTP
+        - Namespace: aws:elasticbeanstalk:environment:process:default
+          OptionName: HealthCheckPath
+          Value: !Ref ApplicationHealthCheckPath
+
+        # Python platform options
+        - Namespace: aws:elasticbeanstalk:container:python
+          OptionName: WSGIPath
+          Value: application
+        - Namespace: aws:elasticbeanstalk:container:python
+          OptionName: NumProcesses
+          Value: '1'
+        - Namespace: aws:elasticbeanstalk:container:python
+          OptionName: NumThreads
+          Value: '15'
+        - Namespace: aws:elasticbeanstalk:container:python
+          OptionName: ProxyServer
+          Value: nginx
+
+        # Service role
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: ServiceRole
+          Value: !Ref EBServiceRole
+
+        # Environment variables
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: AWS_DEFAULT_REGION
+          Value: !Ref AWS::Region
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: AWS_REGION
+          Value: !Ref AWS::Region
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: S3_BUCKET
+          Value: !Ref ImagesBucket
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SECRET_KEY
+          Value: !Ref AppSecretKey
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DATABASE_URL
+          Value: !Sub
+            - postgresql+psycopg2://${DBUser}:${DBPass}@${DBHost}:${DBPort}/${DBDatabase}
+            - DBUser: !Ref DBUsername
+              DBPass: !Ref DBPassword
+              DBHost: !GetAtt PhotoAlbumDB.Endpoint.Address
+              DBPort: !GetAtt PhotoAlbumDB.Endpoint.Port
+              DBDatabase: !Ref DBName
+
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-env'
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+
+  PublicSubnet1Id:
+    Value: !Ref PublicSubnet1
+
+  PublicSubnet2Id:
+    Value: !Ref PublicSubnet2
+
+  PrivateSubnet1Id:
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2Id:
+    Value: !Ref PrivateSubnet2
+
+  ImagesBucketName:
+    Value: !Ref ImagesBucket
+
+  RDSEndpoint:
+    Value: !GetAtt PhotoAlbumDB.Endpoint.Address
+
+  RDSPort:
+    Value: !GetAtt PhotoAlbumDB.Endpoint.Port
+
+  ElasticBeanstalkApplicationName:
+    Value: !Ref EBApplication
+
+  ElasticBeanstalkEnvironmentName:
+    Value: !Ref EBEnvironment
+
+  ElasticBeanstalkCNAME:
+    Value: !GetAtt EBEnvironment.EndpointURL

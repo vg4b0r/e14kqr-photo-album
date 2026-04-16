@@ -1,8 +1,9 @@
-name: Deploy to Elastic Beanstalk
+name: Deploy app and infrastructure
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -12,18 +13,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python (optional)
-        uses: actions/setup-python@v5
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          python-version: "3.14"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      
-      - name: Install deps
+      - name: Deploy infrastructure with CloudFormation
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
+          aws cloudformation deploy \
+            --template-file infrastructure/template.yml \
+            --stack-name photo-album-stack \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              ProjectName=photo-album \
+              EnvironmentName=prod \
+              DBUsername=${{ secrets.DB_USERNAME }} \
+              DBPassword=${{ secrets.DB_PASSWORD }} \
+              AppSecretKey=${{ secrets.FLASK_SECRET_KEY }}
+              ApplicationHealthCheckPath=/health \
+              ExistingOrNewBucketName=e14kqr-photo-album-bucket
 
-      - name: Create deployment package
+      - name: Package application
         run: |
           zip -r deploy.zip . \
             -x ".git/*" \
@@ -32,26 +45,20 @@ jobs:
             -x "__pycache__/*" \
             -x "*.pyc" \
             -x ".env" \
-            -x "local.db"
+            -x "infrastructure/*"
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Verify AWS identity
-        run: aws sts get-caller-identity
+      - name: Show package content
+        run: unzip -l deploy.zip | head -100
 
-      - name: Deploy to Elastic Beanstalk
+      - name: Deploy app to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           region: ${{ secrets.AWS_REGION }}
-          application_name: ${{ secrets.EB_APPLICATION_NAME }}
-          environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
+          application_name: photo-album-prod-app
+          environment_name: photo-album-prod-env
           version_label: ${{ github.sha }}
           deployment_package: deploy.zip
-          wait_for_deployment: false
+          wait_for_deployment: true
