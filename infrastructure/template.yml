@@ -385,7 +385,7 @@ Resources:
   EBInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile'
+      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v2'
       Roles:
         - !Ref EBEC2Role
 
@@ -410,7 +410,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres'
+      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres-v2'
       Engine: postgres
       EngineVersion: !Ref DBEngineVersion
       DBInstanceClass: !Ref DBInstanceClass
@@ -428,7 +428,7 @@ Resources:
       Port: 5432
       VPCSecurityGroups:
         - !Ref RDSSecurityGroup
-      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup-v2
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-${EnvironmentName}-postgres'
