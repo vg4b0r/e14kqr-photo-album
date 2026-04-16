@@ -15,7 +15,7 @@ Parameters:
 
   ExistingOrNewBucketName:
     Type: String
-    Default: e14kqr-photo-album-bucket-v9
+    Default: e14kqr-photo-album-bucket-v10
 
   VpcCidr:
     Type: String
@@ -55,7 +55,7 @@ Parameters:
 
   DBName:
     Type: String
-    Default: photoalbumdbv9
+    Default: photoalbumdbv10
 
   DBUsername:
     Type: String
@@ -335,7 +335,7 @@ Resources:
   EBServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v9'
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v10'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -385,7 +385,7 @@ Resources:
   EBInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v9'
+      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v10'
       Roles:
         - !Ref EBEC2Role
 
@@ -410,7 +410,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres-v9'
+      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgres-v10'
       Engine: postgres
       EngineVersion: !Ref DBEngineVersion
       DBInstanceClass: !Ref DBInstanceClass
@@ -440,7 +440,7 @@ Resources:
   EBApplication:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
-      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v9'
+      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v10'
       Description: Photo Album Elastic Beanstalk application
 
   EBEnvironment:
@@ -452,7 +452,7 @@ Resources:
       - EBServiceRole
     Properties:
       ApplicationName: !Ref EBApplication
-      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v9'
+      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v10'
       PlatformArn: !Ref PythonPlatformArn
       Tier:
         Name: WebServer

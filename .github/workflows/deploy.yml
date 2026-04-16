@@ -57,8 +57,8 @@ jobs:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           region: ${{ secrets.AWS_REGION }}
-          application_name: photo-album-prod-app-v9
-          environment_name: photo-album-prod-env-v9
+          application_name: photo-album-prod-app-v10
+          environment_name: photo-album-prod-env-v10
           version_label: ${{ github.sha }}
           deployment_package: deploy.zip
           wait_for_deployment: true
