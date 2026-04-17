@@ -15,7 +15,7 @@ Parameters:
 
   ExistingOrNewBucketName:
     Type: String
-    Default: e14kqr-photo-album-bucket-v14
+    Default: e14kqr-photo-album-bucket-v15
 
   VpcCidr:
     Type: String
@@ -55,7 +55,7 @@ Parameters:
 
   DBName:
     Type: String
-    Default: photoalbumdbv14
+    Default: photoalbumdbv15
 
   DBUsername:
     Type: String
@@ -92,13 +92,10 @@ Parameters:
     NoEcho: true
     MinLength: 16
 
-  PythonPlatformArn:
+  PythonSolutionStack:
     Type: String
-    Default: arn:aws:elasticbeanstalk:eu-north-1::platform/Python 3.11 running on 64bit Amazon Linux 2023/4.3.0
-    Description: >
-      Elastic Beanstalk platform ARN. Region/platform verzió szerint állítsd.
-      Ha kell, cseréld a saját régiódnak megfelelő Python platform ARN-re.
-
+    Default: "64bit Amazon Linux 2023 v4.10.0 running Python 3.12"
+    
   ApplicationHealthCheckPath:
     Type: String
     Default: /health
@@ -335,7 +332,7 @@ Resources:
   EBServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v14'
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v15'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -385,7 +382,7 @@ Resources:
   EBInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v14'
+      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v15'
       Roles:
         - !Ref EBEC2Role
 
@@ -397,20 +394,20 @@ Resources:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Private subnets for PostgreSQL
-      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v14'
+      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v15'
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
       Tags:
         - Key: Name
-          Value: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v14'
+          Value: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v15'
 
   PhotoAlbumDB:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgresv14'
+      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgresv15'
       Engine: postgres
       EngineVersion: !Ref DBEngineVersion
       DBInstanceClass: !Ref DBInstanceClass
@@ -440,7 +437,7 @@ Resources:
   EBApplication:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
-      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v14'
+      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v15'
       Description: Photo Album Elastic Beanstalk application
 
   EBEnvironment:
@@ -452,8 +449,8 @@ Resources:
       - EBServiceRole
     Properties:
       ApplicationName: !Ref EBApplication
-      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v14'
-      PlatformArn: !Ref PythonPlatformArn
+      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v15'
+      SolutionStackName: !Ref PythonSolutionStack
       Tier:
         Name: WebServer
         Type: Standard
