@@ -15,7 +15,7 @@ Parameters:
 
   ExistingOrNewBucketName:
     Type: String
-    Default: e14kqr-photo-album-bucket-v15
+    Default: e14kqr-photo-album-bucket-v16
 
   VpcCidr:
     Type: String
@@ -55,7 +55,7 @@ Parameters:
 
   DBName:
     Type: String
-    Default: photoalbumdbv15
+    Default: photoalbumdbv16
 
   DBUsername:
     Type: String
@@ -332,7 +332,7 @@ Resources:
   EBServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v15'
+      RoleName: !Sub '${ProjectName}-${EnvironmentName}-eb-service-role-v16'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -382,7 +382,7 @@ Resources:
   EBInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v15'
+      InstanceProfileName: !Sub '${ProjectName}-${EnvironmentName}-eb-ec2-instance-profile-v16'
       Roles:
         - !Ref EBEC2Role
 
@@ -394,20 +394,20 @@ Resources:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Private subnets for PostgreSQL
-      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v15'
+      DBSubnetGroupName: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v16'
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
       Tags:
         - Key: Name
-          Value: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v15'
+          Value: !Sub '${ProjectName}-${EnvironmentName}-db-subnet-group-v16'
 
   PhotoAlbumDB:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgresv15'
+      DBInstanceIdentifier: !Sub '${ProjectName}-${EnvironmentName}-postgresv16'
       Engine: postgres
       EngineVersion: !Ref DBEngineVersion
       DBInstanceClass: !Ref DBInstanceClass
@@ -437,7 +437,7 @@ Resources:
   EBApplication:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
-      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v15'
+      ApplicationName: !Sub '${ProjectName}-${EnvironmentName}-app-v16'
       Description: Photo Album Elastic Beanstalk application
 
   EBEnvironment:
@@ -449,7 +449,7 @@ Resources:
       - EBServiceRole
     Properties:
       ApplicationName: !Ref EBApplication
-      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v15'
+      EnvironmentName: !Sub '${ProjectName}-${EnvironmentName}-env-v16'
       SolutionStackName: !Ref PythonSolutionStack
       Tier:
         Name: WebServer
@@ -620,9 +620,6 @@ Resources:
         - Namespace: aws:elasticbeanstalk:container:python
           OptionName: NumThreads
           Value: '15'
-        - Namespace: aws:elasticbeanstalk:container:python
-          OptionName: ProxyServer
-          Value: nginx
 
         # Service role
         - Namespace: aws:elasticbeanstalk:environment
