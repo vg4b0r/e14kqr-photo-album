@@ -7,7 +7,11 @@ def s3_client():
     return boto3.client(
         "s3",
         region_name=region,
-        config=Config(signature_version="s3v4")
+        endpoint_url=f"https://s3.{region}.amazonaws.com",
+        config=Config(
+            signature_version="s3v4",
+            s3={"addressing_style": "virtual"}
+        )
     )
 
 def upload_fileobj(fileobj, bucket: str, key: str, content_type: str):
@@ -28,5 +32,6 @@ def presigned_get_url(bucket: str, key: str, expires_sec: int = 3600) -> str:
     return s3.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": key},
-        ExpiresIn=expires_sec
+        ExpiresIn=expires_sec,
+        HttpMethod="GET",
     )

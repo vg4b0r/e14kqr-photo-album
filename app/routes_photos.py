@@ -7,6 +7,7 @@ from . import db
 from .models import Photo
 from .s3 import upload_fileobj, delete_object, presigned_get_url
 import logging
+from datetime import datetime, timezone
 
 photos_bp = Blueprint("photos", __name__)
 
@@ -80,7 +81,10 @@ def upload():
 def view_photo(photo_id: int):
     p = Photo.query.get_or_404(photo_id)
     bucket = os.environ["S3_BUCKET"]
-    url = presigned_get_url(bucket, p.s3_key, expires_sec=300)
+    url = presigned_get_url(bucket, p.s3_key, expires_sec=9000)
+
+    logging.warning("PHOTO DEBUG bucket=%s key=%s url=%s", bucket, p.s3_key, url)
+
     return render_template("photo.html", photo=p, image_url=url)
 
 @photos_bp.post("/delete/<int:photo_id>")
@@ -97,3 +101,11 @@ def delete(photo_id: int):
     db.session.commit()
     flash("Törölve.")
     return redirect(url_for("photos.index"))
+
+@photos_bp.get("/debug/time")
+def debug_time():
+    return {
+        "utc_now": datetime.now(timezone.utc).isoformat(),
+        "aws_region": os.environ.get("AWS_REGION"),
+        "bucket": os.environ.get("S3_BUCKET"),
+    }
